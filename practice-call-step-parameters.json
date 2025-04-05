@@ -1,0 +1,14 @@
+{
+  "jobName": "hudi-3",
+  "jobRole": "arn:aws:iam::166884686234:role/glueaccess",
+  "scriptLocation": "s3://aws-glue-hudioption/scripts/lakehouse_options-hudicheck1.py",
+  "secret_name": "Secrets",
+  "aws_region": "us-east-2",
+  "destination_bucket": "s3a://datalakehouse-j/datalake1/",
+  "metadata_file_path": "s3a://datalakehouse-j/datalake1/metadata/last_processed_timestamp.json",
+  "source_table": "public.mockrecord",
+  "bucket_name": "datalakehouse-j",
+  "metadata_key": "datalake/metadata/last_processed_timestamp.json",
+  "maxCapacity": 10,
+  "glueVersion": "5.0"
+}

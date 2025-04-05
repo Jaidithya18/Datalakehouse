@@ -1,0 +1,89 @@
+{
+  "Comment": "A Step Function to create a Glue job, run the job, and check its status.",
+  "StartAt": "CreateGlueJob",
+  "States": {
+    "CreateGlueJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:glue:createJob",
+      "Parameters": {
+        "Name.$": "$.jobName",
+        "Role.$": "$.jobRole",
+        "Command": {
+          "Name": "glueetl",
+          "ScriptLocation.$": "$.scriptLocation"
+        },
+        "DefaultArguments": {
+          "--secret_name.$": "$.secret_name",
+          "--aws_region.$": "$.aws_region",
+          "--destination_bucket.$": "$.destination_bucket",
+          "--metadata_file_path.$": "$.metadata_file_path",
+          "--source_table.$": "$.source_table",
+          "--bucket_name.$": "$.bucket_name",
+          "--metadata_key.$": "$.metadata_key",
+          "--enable-glue-datacatalog": "true"
+        },
+        "MaxCapacity.$": "$.maxCapacity",
+        "GlueVersion.$": "$.glueVersion"
+      },
+      "ResultPath": "$.createResult",
+      "Next": "RunGlueJob"
+    },
+    "RunGlueJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:glue:startJobRun",
+      "Parameters": {
+        "JobName.$": "$.jobName",
+        "Arguments": {
+          "--secret_name.$": "$.secret_name",
+          "--aws_region.$": "$.aws_region",
+          "--destination_bucket.$": "$.destination_bucket",
+          "--metadata_file_path.$": "$.metadata_file_path",
+          "--source_table.$": "$.source_table",
+          "--bucket_name.$": "$.bucket_name",
+          "--metadata_key.$": "$.metadata_key"
+        }
+      },
+      "ResultPath": "$.runResult",
+      "Next": "WaitForJobCompletion"
+    },
+    "WaitForJobCompletion": {
+      "Type": "Wait",
+      "Seconds": 30,
+      "Next": "CheckJobStatus"
+    },
+    "CheckJobStatus": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:glue:getJobRun",
+      "Parameters": {
+        "JobName.$": "$.jobName",
+        "RunId.$": "$.runResult.JobRunId"
+      },
+      "ResultPath": "$.jobStatus",
+      "Next": "EvaluateJobStatus"
+    },
+    "EvaluateJobStatus": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.jobStatus.JobRun.JobRunState",
+          "StringEquals": "SUCCEEDED",
+          "Next": "JobSucceeded"
+        },
+        {
+          "Variable": "$.jobStatus.JobRun.JobRunState",
+          "StringEquals": "FAILED",
+          "Next": "JobFailed"
+        }
+      ],
+      "Default": "WaitForJobCompletion"
+    },
+    "JobSucceeded": {
+      "Type": "Succeed"
+    },
+    "JobFailed": {
+      "Type": "Fail",
+      "Error": "GlueJobFailed",
+      "Cause": "The Glue job has failed."
+    }
+  }
+}
